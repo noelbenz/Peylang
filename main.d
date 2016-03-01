@@ -1,7 +1,7 @@
 
 import io = std.stdio;
+    alias File = io.File;
 import utf = std.utf;
-alias File = io.File;
 
 /++
   + Represents a position in code. Used by CodeReader to
@@ -62,11 +62,13 @@ class FileCodeReader : CodeReader {
     char[] buf;        // Buffer slice
     dchar[_peekMin*2] cbuffer; // Character buffer
     dchar[] cbuf;      // Character buffer slice
+    ulong pos;
 
 
 
     this(string path) {
         file = File(path, "r");
+        pos = 0;
         updateBuffers();
     }
 
@@ -140,6 +142,7 @@ class FileCodeReader : CodeReader {
     }
 
     override @property void next() {
+        pos += utf.codeLength!char(cbuf[0]);
         cbuf = cbuf[1..$];
         updateBuffers();
     }
@@ -158,11 +161,12 @@ class FileCodeReader : CodeReader {
     }
 
     override @property CodePosition pos() {
-        return new FileCodePosition(file.tell());
+        return new FileCodePosition(pos);
     }
     override @property void pos(CodePosition _cp) {
-        FileCodePosition cp = cast(FileCodePosition)_cp;
+        auto cp = cast(FileCodePosition)_cp;
         file.seek(cast(long)cp.pos);
+        pos = cp.pos;
         buf = new char[0];
         cbuf = new dchar[0];
         updateBuffers();
@@ -170,7 +174,7 @@ class FileCodeReader : CodeReader {
 }
 
 int main() {
-    auto reader = new FileCodeReader("unicode.fay");
+    auto reader = new FileCodeReader("unicode.pey");
 
     while(!reader.empty) {
         io.writeln("C: ", reader.c);

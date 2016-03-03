@@ -44,23 +44,6 @@ module sm.spec;
  *------------------------------------------------------
  */
 
-enum SubOpCode {
-    Noop = 0,
-    LoadMemory = 1,
-    StoreMemory = 2,
-    Call = 3,
-    Return = 4,
-    Jump = 5,
-    Branch = 6,
-    BitNot = 9,
-    Negate = 10,
-    LogicNot = 11,
-    PopCount = 12,
-    BitReverse = 13,
-    Pop = 14,
-    Push = 15,
-}
-
 enum OpCode {
     SubOp = 0,
     Add = 1,
@@ -78,6 +61,43 @@ enum OpCode {
     ConditionalAdd = 13,
     ImmediateLow = 14,
     ImmediateHigh = 15,
+}
+
+enum SubOpCode {
+    Noop = 0,
+    LoadMemory = 1,
+    StoreMemory = 2,
+    Call = 3,
+    Return = 4,
+    Jump = 5,
+    Branch = 6,
+    BitNot = 9,
+    Negate = 10,
+    LogicNot = 11,
+    PopCount = 12,
+    BitReverse = 13,
+    Pop = 14,
+    Push = 15,
+}
+
+private struct OpCodePair {
+    OpCode op;
+    SubOpCode subop;
+}
+private OpCodePair[dstring] opcodeLookup;
+
+/++
+  + Determines the opcode and subRopcode form a dchar op name.
+  +
+  + Returns false iff the op name is not a recognized opcode.
+ ++/
+bool determineOpCode(dstring opName, ref OpCode op, ref SubOpCode subop) {
+    auto match = (opName in opcodeLookup);
+    if(match == null)
+        return false;
+    op = match.op;
+    subop = match.subop;
+    return true;
 }
 
 

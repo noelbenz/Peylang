@@ -11,4 +11,5 @@
 231
 -52 -99
 Hello World
+ld st jmp pop add cmov
 

@@ -84,7 +84,48 @@ private struct OpCodePair {
     OpCode op;
     SubOpCode subop;
 }
-private OpCodePair[dstring] opcodeLookup;
+private immutable OpCodePair[dstring] opcodeLookup;
+
+
+// opcodeLookup["noop"d] = OpCodePair(OpCode.SubOp, SubOpCode.Noop);
+private template opadd(string opName, string op, string subop) {
+    const char[] opadd =
+        "opcodeLookup[\""~opName~"\"d]="~
+        "OpCodePair(OpCode."~op~", SubOpCode."~subop~");";
+}
+shared static this() {
+    // ops
+    mixin(opadd!("ld"  , "SubOp", "LoadMemory" ));
+    mixin(opadd!("st"  , "SubOp", "StoreMemory"));
+    mixin(opadd!("call", "SubOp", "Call"       ));
+    mixin(opadd!("ret" , "SubOp", "Return"     ));
+    mixin(opadd!("jmp" , "SubOp", "Jump"       ));
+    mixin(opadd!("bra" , "SubOp", "Branch"     ));
+    mixin(opadd!("bnot", "SubOp", "BitNot"     ));
+    mixin(opadd!("neg" , "SubOp", "Negate"     ));
+    mixin(opadd!("lnot", "SubOp", "LogicNot"   ));
+    mixin(opadd!("popn", "SubOp", "PopCount"   ));
+    mixin(opadd!("brev", "SubOp", "BitReverse" ));
+    mixin(opadd!("pop" , "SubOp", "Pop"        ));
+    mixin(opadd!("push", "SubOp", "Push"       ));
+    // sub-ops
+    mixin(opadd!("noop", "SubOp"          , "Noop"));
+    mixin(opadd!("add" , "Add"            , "Noop"));
+    mixin(opadd!("sub" , "Subtract"       , "Noop"));
+    mixin(opadd!("mul" , "Multiply"       , "Noop"));
+    mixin(opadd!("div" , "Divide"         , "Noop"));
+    mixin(opadd!("bxor", "BitXor"         , "Noop"));
+    mixin(opadd!("band", "BitAnd"         , "Noop"));
+    mixin(opadd!("bor" , "BitOr"          , "Noop"));
+    mixin(opadd!("sl"  , "ShiftLeft"      , "Noop"));
+    mixin(opadd!("sr"  , "ShiftRight"     , "Noop"));
+    mixin(opadd!("lt"  , "LessThan"       , "Noop"));
+    mixin(opadd!("lte" , "LessThanOrEqual", "Noop"));
+    mixin(opadd!("cmov", "ConditionalMove", "Noop"));
+    mixin(opadd!("cadd", "ConditionalAdd" , "Noop"));
+    mixin(opadd!("ilo" , "ImmediateLow"   , "Noop"));
+    mixin(opadd!("ihi" , "ImmediateHigh"  , "Noop"));
+}
 
 /++
   + Determines the opcode and subopcode form a dchar op name.

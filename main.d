@@ -16,10 +16,20 @@ int main() {
 
     auto lexer = new Lexer(reader);
     Token token;
+    /+
     while(!lexer.empty) {
         if(lexer.parseToken(token))
             io.writeln(token);
     }
+    +/
+
+    Parser parser = new Parser(lexer);
+    Instruction inst;
+    while(!parser.empty) {
+        if(parser.parseInstruction(inst))
+            io.writeln(inst);
+    }
+
 
 
     return 0;

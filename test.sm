@@ -1,15 +1,4 @@
 
-0
-00
--1
-1
-255
--128
-55
-3 3
-66
-231
--52 -99
-Hello World
-ld st jmp pop add cmov
+add r00 r01 r02
+sub r15 r03 r05
 

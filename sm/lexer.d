@@ -11,6 +11,7 @@ enum TokenType {
     Op,
     Immediate,
     Identifier,
+    Register,
 }
 struct Token {
     size_t beg;       // Beginning character index (inclusive).
@@ -19,7 +20,6 @@ struct Token {
     size_t col;       // Column of the first character.
     TokenType type;   // Type of Token.
     OpCode op;        // Op code.
-    SubOpCode subop;  // Sub-Op code.
     int imm;          // Immediate value.
     dchar[] ident;    // Identifier.
 }
@@ -131,7 +131,7 @@ class Lexer {
       + reached without parsing a token, <parseToken> will return false, and
       + thus the token passed by reference contains no valuable information.
       +
-      + Identifiers have temporary life-times. Each time <parseToken> is
+      + Identifiers have temporary lifetimes. Each time <parseToken> is
       + called, the contents of any previous tokens' identifiers are invalid.
      ++/
     bool parseToken(ref Token token) {
@@ -150,9 +150,23 @@ class Lexer {
                 next();
                 parseNumber(token, init, false);
                 return true;
-            case 'a': .. case'z':
+            case 'r':
+                dchar nextc = reader.peek(1);
+                if(nextc < '0' || nextc > '9')
+                    goto identifier;
+                fillToken(token);
+                next();
+                parseNumber(token, 0, false);
+                if(token.imm > 15)
+                    throw exception(format("Register number %d does not exist.",
+                                           token.imm));
+                token.type = TokenType.Register;
+                return true;
+            case 'a': .. case 'q':
+            case 's': .. case 'z':
             case 'A': .. case'Z':
             case '_':
+            identifier:
                 fillToken(token);
                 stringBuffer[0] = c;
                 int i = 1;
@@ -172,7 +186,7 @@ class Lexer {
                 token.end = pos;
                 token.ident = stringBuffer[0..i];
 
-                if(determineOpCode(to!dstring(token.ident), token.op, token.subop))
+                if(determineOpCode(to!dstring(token.ident), token.op))
                     token.type = TokenType.Op;
                 else
                     token.type = TokenType.Identifier;

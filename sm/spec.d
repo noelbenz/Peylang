@@ -45,6 +45,39 @@ module sm.spec;
  */
 
 enum OpCode {
+    Noop,
+    LoadMemory,
+    StoreMemory,
+    Call,
+    Return,
+    Jump,
+    Branch,
+    BitNot,
+    Negate,
+    LogicNot,
+    PopCount,
+    BitReverse,
+    Pop,
+    Push,
+
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    BitXor,
+    BitAnd,
+    BitOr,
+    ShiftLeft,
+    ShiftRight,
+    LessThan,
+    LessThanOrEqual,
+    ConditionalMove,
+    ConditionalAdd,
+    ImmediateLow,
+    ImmediateHigh,
+}
+
+enum SmOpCode {
     SubOp = 0,
     Add = 1,
     Subtract = 2,
@@ -63,7 +96,7 @@ enum OpCode {
     ImmediateHigh = 15,
 }
 
-enum SubOpCode {
+enum SmSubOpCode {
     Noop = 0,
     LoadMemory = 1,
     StoreMemory = 2,
@@ -80,51 +113,47 @@ enum SubOpCode {
     Push = 15,
 }
 
-private struct OpCodePair {
-    OpCode op;
-    SubOpCode subop;
-}
-private immutable OpCodePair[dstring] opcodeLookup;
+private immutable OpCode[dstring] opcodeLookup;
 
 
 // opcodeLookup["noop"d] = OpCodePair(OpCode.SubOp, SubOpCode.Noop);
-private template opadd(string opName, string op, string subop) {
+private template opadd(string opName, string op) {
     const char[] opadd =
-        "opcodeLookup[\""~opName~"\"d]="~
-        "OpCodePair(OpCode."~op~", SubOpCode."~subop~");";
+        "opcodeLookup[\""~opName~"\"d] = OpCode."~op~";";
 }
 shared static this() {
     // ops
-    mixin(opadd!("ld"  , "SubOp", "LoadMemory" ));
-    mixin(opadd!("st"  , "SubOp", "StoreMemory"));
-    mixin(opadd!("call", "SubOp", "Call"       ));
-    mixin(opadd!("ret" , "SubOp", "Return"     ));
-    mixin(opadd!("jmp" , "SubOp", "Jump"       ));
-    mixin(opadd!("bra" , "SubOp", "Branch"     ));
-    mixin(opadd!("bnot", "SubOp", "BitNot"     ));
-    mixin(opadd!("neg" , "SubOp", "Negate"     ));
-    mixin(opadd!("lnot", "SubOp", "LogicNot"   ));
-    mixin(opadd!("popn", "SubOp", "PopCount"   ));
-    mixin(opadd!("brev", "SubOp", "BitReverse" ));
-    mixin(opadd!("pop" , "SubOp", "Pop"        ));
-    mixin(opadd!("push", "SubOp", "Push"       ));
+    // static assert(false, opadd!("TEST", "OTHER"));
+    mixin(opadd!("ld"  , "LoadMemory"     ));
+    mixin(opadd!("st"  , "StoreMemory"    ));
+    mixin(opadd!("call", "Call"           ));
+    mixin(opadd!("ret" , "Return"         ));
+    mixin(opadd!("jmp" , "Jump"           ));
+    mixin(opadd!("bra" , "Branch"         ));
+    mixin(opadd!("bnot", "BitNot"         ));
+    mixin(opadd!("neg" , "Negate"         ));
+    mixin(opadd!("lnot", "LogicNot"       ));
+    mixin(opadd!("popn", "PopCount"       ));
+    mixin(opadd!("brev", "BitReverse"     ));
+    mixin(opadd!("pop" , "Pop"            ));
+    mixin(opadd!("push", "Push"           ));
     // sub-ops
-    mixin(opadd!("noop", "SubOp"          , "Noop"));
-    mixin(opadd!("add" , "Add"            , "Noop"));
-    mixin(opadd!("sub" , "Subtract"       , "Noop"));
-    mixin(opadd!("mul" , "Multiply"       , "Noop"));
-    mixin(opadd!("div" , "Divide"         , "Noop"));
-    mixin(opadd!("bxor", "BitXor"         , "Noop"));
-    mixin(opadd!("band", "BitAnd"         , "Noop"));
-    mixin(opadd!("bor" , "BitOr"          , "Noop"));
-    mixin(opadd!("sl"  , "ShiftLeft"      , "Noop"));
-    mixin(opadd!("sr"  , "ShiftRight"     , "Noop"));
-    mixin(opadd!("lt"  , "LessThan"       , "Noop"));
-    mixin(opadd!("lte" , "LessThanOrEqual", "Noop"));
-    mixin(opadd!("cmov", "ConditionalMove", "Noop"));
-    mixin(opadd!("cadd", "ConditionalAdd" , "Noop"));
-    mixin(opadd!("ilo" , "ImmediateLow"   , "Noop"));
-    mixin(opadd!("ihi" , "ImmediateHigh"  , "Noop"));
+    mixin(opadd!("noop", "Noop"           ));
+    mixin(opadd!("add" , "Add"            ));
+    mixin(opadd!("sub" , "Subtract"       ));
+    mixin(opadd!("mul" , "Multiply"       ));
+    mixin(opadd!("div" , "Divide"         ));
+    mixin(opadd!("bxor", "BitXor"         ));
+    mixin(opadd!("band", "BitAnd"         ));
+    mixin(opadd!("bor" , "BitOr"          ));
+    mixin(opadd!("sl"  , "ShiftLeft"      ));
+    mixin(opadd!("sr"  , "ShiftRight"     ));
+    mixin(opadd!("lt"  , "LessThan"       ));
+    mixin(opadd!("lte" , "LessThanOrEqual"));
+    mixin(opadd!("cmov", "ConditionalMove"));
+    mixin(opadd!("cadd", "ConditionalAdd" ));
+    mixin(opadd!("ilo" , "ImmediateLow"   ));
+    mixin(opadd!("ihi" , "ImmediateHigh"  ));
 }
 
 /++
@@ -132,12 +161,11 @@ shared static this() {
   +
   + Returns false iff the op name is not a recognized opcode.
  ++/
-bool determineOpCode(dstring opName, ref OpCode op, ref SubOpCode subop) {
+bool determineOpCode(dstring opName, ref OpCode op) {
     auto match = (opName in opcodeLookup);
     if(match == null)
         return false;
-    op = match.op;
-    subop = match.subop;
+    op = *match;
     return true;
 }
 

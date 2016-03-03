@@ -12,6 +12,9 @@ enum TokenType {
     Immediate,
     Identifier,
     Register,
+
+    // Symbols
+    Colon,
 }
 struct Token {
     size_t beg;       // Beginning character index (inclusive).
@@ -21,7 +24,7 @@ struct Token {
     TokenType type;   // Type of Token.
     OpCode op;        // Op code.
     int imm;          // Immediate value.
-    dchar[] ident;    // Identifier.
+    dstring ident;    // Identifier.
 }
 
 class LexerException : Exception {
@@ -130,9 +133,6 @@ class Lexer {
       + Returns true iff a token was parsed. If the end of the code has been
       + reached without parsing a token, <parseToken> will return false, and
       + thus the token passed by reference contains no valuable information.
-      +
-      + Identifiers have temporary lifetimes. Each time <parseToken> is
-      + called, the contents of any previous tokens' identifiers are invalid.
      ++/
     bool parseToken(ref Token token) {
         c = reader.c;
@@ -184,13 +184,18 @@ class Lexer {
                     next();
                 }
                 token.end = pos;
-                token.ident = stringBuffer[0..i];
+                token.ident = stringBuffer[0..i].idup;
 
-                if(determineOpCode(to!dstring(token.ident), token.op))
+                if(determineOpCode(token.ident, token.op))
                     token.type = TokenType.Op;
                 else
                     token.type = TokenType.Identifier;
 
+                return true;
+            case ':':
+                fillToken(token);
+                next();
+                token.type = TokenType.Colon;
                 return true;
             case '\n':
                 next();

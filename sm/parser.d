@@ -26,6 +26,8 @@ struct Instruction {
     int regb;
     int regc;
     int imm;
+
+    dstring label;
 }
 
 class Parser {
@@ -56,9 +58,23 @@ class Parser {
 
     bool parseInstruction(ref Instruction inst) {
         while(!empty) {
+            if(token.type == TokenType.Identifier) {
+                inst.token = token;
+                inst.label = token.ident;
+                next();
+                expect(TokenType.Colon);
+                next();
+                return true;
+            }
+            inst.label = new dchar[0];
             if(token.type != TokenType.Op)
-                throw exception("Expected an Op.");
+                throw exception("Expected an Op or Identifier.");
             switch(token.op) {
+                case OpCode.Noop:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    return true;
                 case OpCode.Add: .. case OpCode.ConditionalAdd:
                     inst.token = token;
                     inst.op = token.op;
@@ -67,11 +83,48 @@ class Parser {
                     expect(TokenType.Register);
                     inst.regc = token.imm;
                     next();
-                    // left
+                    // left / condition
                     expect(TokenType.Register);
                     inst.regb = token.imm;
                     next();
-                    // right
+                    // right / value
+                    expect(TokenType.Register);
+                    inst.rega = token.imm;
+                    next();
+                    return true;
+                case OpCode.LoadMemory: .. case OpCode.Call:
+                case OpCode.Jump: .. case OpCode.Push:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    // dest / condition
+                    expect(TokenType.Register);
+                    inst.regc = token.imm;
+                    next();
+                    // other
+                    expect(TokenType.Register);
+                    inst.rega = token.imm;
+                    next();
+                    return true;
+                case OpCode.ImmediateLow:
+                case OpCode.ImmediateHigh:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    // dest
+                    expect(TokenType.Register);
+                    inst.regc = token.imm;
+                    next();
+                    // immediate
+                    expect(TokenType.Immediate);
+                    inst.imm = token.imm;
+                    next();
+                    return true;
+                case OpCode.Return:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    // stack pointer
                     expect(TokenType.Register);
                     inst.rega = token.imm;
                     next();

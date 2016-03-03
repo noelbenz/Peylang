@@ -1,4 +1,11 @@
 
-add r00 r01 r02
-sub r15 r03 r05
+Start:
+add  r00 r01 r02
+sub  r00 r00 r05
+push r00 r15
+jmp  r04 r11
+ihi  r00 255
+ilo  r00 -127
+Exit:
+ret  r15
 

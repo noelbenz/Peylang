@@ -4,6 +4,8 @@ import pey.codereader;
 import pey.common;
 import sm;
 
+import std.outbuffer;
+
 int main() {
     auto reader = new FileCodeReader("test.sm");
 
@@ -15,8 +17,8 @@ int main() {
     +/
 
     auto lexer = new Lexer(reader);
-    Token token;
     /+
+    Token token;
     while(!lexer.empty) {
         if(lexer.parseToken(token))
             io.writeln(token);
@@ -25,9 +27,11 @@ int main() {
 
     Parser parser = new Parser(lexer);
     Instruction inst;
+    int mem = 0;
     while(!parser.empty) {
         if(parser.parseInstruction(inst))
-            io.writeln(inst);
+            io.write(toCode(inst, mem));
+        mem++;
     }
 
 

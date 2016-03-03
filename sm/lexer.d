@@ -7,11 +7,17 @@ import pey.literals;
 
 import sm.spec;
 
+enum TokenType {
+    Op,
+    Immediate,
+    Identifier,
+}
 struct Token {
     size_t beg;       // Beginning character index (inclusive).
     size_t end;       // End character index (exclusive).
     size_t row;       // Row of the first character.
     size_t col;       // Column of the first character.
+    TokenType type;   // Type of Token.
     OpCode op;        // Op code.
     SubOpCode subop;  // Sub-Op code.
     int imm;          // Immediate value.
@@ -114,6 +120,7 @@ class Lexer {
                 throw exception("Number literal is outside the allowed range [-128, 255].");
         }
         token.end = pos;
+        token.type = TokenType.Immediate;
     }
 
 
@@ -164,6 +171,12 @@ class Lexer {
                 }
                 token.end = pos;
                 token.ident = stringBuffer[0..i];
+
+                if(determineOpCode(to!dstring(token.ident), token.op, token.subop))
+                    token.type = TokenType.Op;
+                else
+                    token.type = TokenType.Identifier;
+
                 return true;
             case '\n':
                 next();

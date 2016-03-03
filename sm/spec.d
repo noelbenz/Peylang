@@ -87,7 +87,7 @@ private struct OpCodePair {
 private OpCodePair[dstring] opcodeLookup;
 
 /++
-  + Determines the opcode and subRopcode form a dchar op name.
+  + Determines the opcode and subopcode form a dchar op name.
   +
   + Returns false iff the op name is not a recognized opcode.
  ++/

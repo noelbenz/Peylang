@@ -25,7 +25,8 @@ int main() {
     }
     +/
 
-    Parser parser = new Parser(lexer);
+    auto parser = new Parser(lexer);
+    /+
     Instruction inst;
     int mem = 0;
     while(!parser.empty) {
@@ -33,7 +34,13 @@ int main() {
             io.write(toCode(inst, mem));
         mem++;
     }
+    +/
 
+    auto trans = new CTranslator(parser);
+    trans.run();
+
+    io.writeln(cast(char[])trans.labels.toBytes());
+    io.writeln(cast(char[])trans.code.toBytes());
 
 
     return 0;

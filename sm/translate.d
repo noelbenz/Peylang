@@ -1,6 +1,9 @@
 
 module sm.translate;
 
+import std.outbuffer;
+import std.utf;
+
 import pey.common;
 
 import sm.spec;
@@ -31,6 +34,59 @@ string toCode(Instruction inst, int address) {
     } else {
         string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8d, %4d);\n";
         return format(fmt, address, opMacro, inst.regc, inst.regb, inst.rega);
+    }
+}
+
+class CTranslator {
+    Parser parser;
+    Instruction inst;
+    OutBuffer labels;
+    OutBuffer code;
+    uint addr;
+    uint immN;
+
+    this(Parser parser) {
+        this.parser = parser;
+        labels = new OutBuffer;
+        code = new OutBuffer;
+    }
+
+    void outputCode() {
+        if(inst.label.length != 0) {
+            string label = toUTF8(inst.label);
+            labels.writef("const ui L_%s = %d;\n", label, addr);
+            code.writef("// %s\n", label);
+            return;
+        }
+
+        string opMacro = toOp(inst.op);
+        if(isImmOp(inst.op)) {
+            if(inst.immL.length == 0) {
+                string fmt = "mem[%d] = make_inst(%8s, %6d, %4d,        0,    0);\n";
+                code.writef(fmt, addr, opMacro, inst.imm, inst.regc);
+            } else {
+                string fmt = "mem[%d] = make_inst(%8s, %6s, %4d,        0,    0);\n";
+                code.writef(fmt, addr, opMacro, "L_" ~ toUTF8(inst.immL), inst.regc);
+            }
+        } else if(isSubOp(inst.op)) {
+            string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8s, %4d);\n";
+            code.writef(fmt, addr, "SUBOP", inst.regc, opMacro, inst.rega);
+        } else {
+            string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8d, %4d);\n";
+            code.writef(fmt, addr, opMacro, inst.regc, inst.regb, inst.rega);
+        }
+
+        addr++;
+    }
+
+    void run() {
+        addr = 0;
+        immN = 0;
+        labels.writef("// Labels\n");
+        while(!parser.empty) {
+            if(parser.parseInstruction(inst))
+                outputCode();
+        }
     }
 }
 
@@ -68,3 +124,5 @@ static this() {
     convtbl[OpCode.ImmediateLow] = "IMMLOW";
     convtbl[OpCode.ImmediateHigh] = "IMMHGH";
 }
+
+

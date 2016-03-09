@@ -26,6 +26,7 @@ struct Instruction {
     int regb;
     int regc;
     int imm;
+    dstring immL;
 
     dstring label;
 }
@@ -67,6 +68,7 @@ class Parser {
                 return true;
             }
             inst.label = new dchar[0];
+            inst.immL = new dchar[0];
             if(token.type != TokenType.Op)
                 throw exception("Expected an Op or Identifier.");
             switch(token.op) {
@@ -116,8 +118,15 @@ class Parser {
                     inst.regc = token.imm;
                     next();
                     // immediate
-                    expect(TokenType.Immediate);
-                    inst.imm = token.imm;
+                    if(token.type == TokenType.Immediate) {
+                        inst.imm = token.imm;
+                    } else if(token.type == TokenType.Identifier) {
+                        inst.immL = token.ident;
+                    } else {
+                        exception(format(
+                            "Expected immediate or identifier, got %s.",
+                            token.type));
+                    }
                     next();
                     return true;
                 case OpCode.Return:

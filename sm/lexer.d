@@ -50,6 +50,12 @@ class Lexer {
     int row;
     int col;
 
+    enum ImmediateMax = (1 << 16) - 1;
+    enum ImmediateMin = -(1 << 15);
+    string ImmediateOutOfRangeMsg = format(
+            "Number literal is outside the allowed range [%d, %d].",
+            ImmediateMin, ImmediateMax);
+
     // Character length limit for identifiers.
     enum maxIdentifier = 256;
     dchar[maxIdentifier] stringBuffer;
@@ -113,14 +119,14 @@ class Lexer {
         token.imm = init;
         while(c >= 0x30 && c <= 0x39) {
             token.imm = 10*token.imm + (cast(int)c & 0b00001111);
-            if(token.imm > 255)
-                throw exception("Number literal is outside the allowed range [-128, 255].");
+            if(token.imm > ImmediateMax)
+                throw exception(ImmediateOutOfRangeMsg);
             next();
         }
         if(negative) {
             token.imm = -token.imm;
-            if(token.imm < -128)
-                throw exception("Number literal is outside the allowed range [-128, 255].");
+            if(token.imm < ImmediateMin)
+                throw exception(ImmediateOutOfRangeMsg);
         }
         token.end = pos;
         token.type = TokenType.Immediate;

@@ -20,7 +20,7 @@ string toOpMacro(OpCode op) {
 }
 
 bool isSubOp(OpCode op) {
-    return op >= OpCode.Add && op <= OpCode.ImmediateHigh;
+    return op >= OpCode.LoadMemory && op <= OpCode.Push;
 }
 
 bool isImmOp(OpCode op) {

@@ -11,8 +11,12 @@ import sm.parser;
 
 private immutable string[OpCode] convtbl;
 
-string toOp(OpCode op) {
-    return convtbl[op];
+string toOpMacro(OpCode op) {
+    auto opMacro = (op in convtbl);
+    if(opMacro)
+        return *opMacro;
+    else
+        return "";
 }
 
 bool isSubOp(OpCode op) {
@@ -20,9 +24,11 @@ bool isSubOp(OpCode op) {
 }
 
 bool isImmOp(OpCode op) {
-    return op == OpCode.ImmediateLow || op == OpCode.ImmediateHigh;
+    return op == OpCode.ImmediateLow || op == OpCode.ImmediateHigh ||
+           op == OpCode.Immediate;
 }
 
+/+
 string toCode(Instruction inst, int address) {
     string opMacro = toOp(inst.op);
     if(isImmOp(inst.op)) {
@@ -36,6 +42,7 @@ string toCode(Instruction inst, int address) {
         return format(fmt, address, opMacro, inst.regc, inst.regb, inst.rega);
     }
 }
++/
 
 class CTranslator {
     Parser parser;
@@ -54,34 +61,47 @@ class CTranslator {
     void outputCode() {
         if(inst.label.length != 0) {
             string label = toUTF8(inst.label);
-            labels.writef("const ui L_%s = %d;\n", label, addr);
+            labels.writef("const u16 L_%s = %d;\n", label, addr);
             code.writef("// %s\n", label);
             return;
         }
 
-        string opMacro = toOp(inst.op);
+        string opMacro = toOpMacro(inst.op);
         if(isImmOp(inst.op)) {
-            if(inst.immL.length == 0) {
-                string fmt = "mem[%d] = make_inst(%8s, %6d, %4d,        0,    0);\n";
-                code.writef(fmt, addr, opMacro, inst.imm, inst.regc);
+            string val;
+            if(inst.immL.length == 0)
+                val = to!string(inst.imm);
+            else
+                val = "L_" ~ toUTF8(inst.immL);
+
+            if(inst.op != OpCode.Immediate) {
+                string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
+                code.writef(fmt, addr, opMacro, val, inst.regc);
+                addr++;
             } else {
-                string fmt = "mem[%d] = make_inst(%8s, %6s, %4d,        0,    0);\n";
-                code.writef(fmt, addr, opMacro, "L_" ~ toUTF8(inst.immL), inst.regc);
+                string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
+                code.writef(fmt, addr, "IMMLOW", "L(" ~ val ~ ")", inst.regc);
+                addr++;
+                code.writef(fmt, addr, "IMMHGH", "H(" ~ val ~ ")", inst.regc);
+                addr++;
             }
         } else if(isSubOp(inst.op)) {
-            string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8s, %4d);\n";
-            code.writef(fmt, addr, "SUBOP", inst.regc, opMacro, inst.rega);
+            string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8s, %4d);\n";
+            code.writef(fmt, addr, "SUBOP", 0, inst.regc, opMacro, inst.rega);
+            addr++;
         } else {
-            string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8d, %4d);\n";
-            code.writef(fmt, addr, opMacro, inst.regc, inst.regb, inst.rega);
+            string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";
+            code.writef(fmt, addr, opMacro, 0, inst.regc, inst.regb, inst.rega);
+            addr++;
         }
 
-        addr++;
     }
 
     void run() {
         addr = 0;
         immN = 0;
+        labels.writef("#define L(VAL) VAL & 0x00FF\n");
+        labels.writef("#define H(VAL) (VAL>>8) & 0x00FF\n\n");
         labels.writef("// Labels\n");
         while(!parser.empty) {
             if(parser.parseInstruction(inst))

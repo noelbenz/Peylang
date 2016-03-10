@@ -44,6 +44,49 @@ module sm.spec;
  *------------------------------------------------------
  */
 
+// r15(stack) r14(frame) r13(condition) r12(address)
+/*------------------------------------------------------
+ *     opcode   | regc       | regb       | rega       |
+ *------------------------------------------------------
+ *  0: noop     |            |            |            |
+ *  0: ld       | r dest     |            | r address  |
+ *  0: st       | r address  |            | r val      |
+ *  0: call     | r address  |            | r stackptr |
+ *  0: ret      |            |            | r stackptr |
+ *  0: jmp      | r cond     |            | r address  |
+ *  0: bra      | r cond     |            | r offset   |
+ *  0: bnot     | r dest     |            | r val      |
+ *  0: neg      | r dest     |            | r val      |
+ *  0: lnot     | r dest     |            | r val      |
+ *  0: popn     | r dest     |            | r count    |
+ *  0: brev     | r dest     |            | r val      |
+ *  0: pop      | r dest     |            | r stackptr |
+ *  0: push     | r val      |            | r stackptr |
+ *------------------------------------------------------
+ *  1: add      | r dest     | r left     | r right    |
+ *  2: sub      | r dest     | r left     | r right    |
+ *  3: mul      | r dest     | r left     | r right    |
+ *  4: div      | r dest     | r left     | r right    |
+ *  5: bxor     | r dest     | r left     | r right    |
+ *  6: band     | r dest     | r left     | r right    |
+ *  7: bor      | r dest     | r left     | r right    |
+ *  8: sl       | r dest     | r left     | r right    |
+ *  9: sr       | r dest     | r left     | r right    |
+ * 10: lt       | r dest     | r left     | r right    |
+ * 11: lte      | r dest     | r left     | r right    |
+ * 12: cmov     | r dest     | r cond     | r value    |
+ * 13: cadd     | r dest     | r cond     | r value    |
+ *------------------------------------------------------
+ *     opcode   | regc       | immediate               |
+ *------------------------------------------------------
+ * 14: ilo      | r dest     | i immediate value       |
+ * 15: ihi      | r dest     | i immediate value       |
+ *------------------------------------------------------
+ *     imm      | r dest     | i immediate value       |
+ *------------------------------------------------------
+ */
+
+
 enum OpCode {
     Noop,
     LoadMemory,
@@ -75,6 +118,8 @@ enum OpCode {
     ConditionalAdd,
     ImmediateLow,
     ImmediateHigh,
+
+    Immediate,
 }
 
 enum SmOpCode {
@@ -123,22 +168,6 @@ private template opadd(string opName, string op) {
 }
 shared static this() {
     // ops
-    // static assert(false, opadd!("TEST", "OTHER"));
-    mixin(opadd!("ld"  , "LoadMemory"     ));
-    mixin(opadd!("st"  , "StoreMemory"    ));
-    mixin(opadd!("call", "Call"           ));
-    mixin(opadd!("ret" , "Return"         ));
-    mixin(opadd!("jmp" , "Jump"           ));
-    mixin(opadd!("bra" , "Branch"         ));
-    mixin(opadd!("bnot", "BitNot"         ));
-    mixin(opadd!("neg" , "Negate"         ));
-    mixin(opadd!("lnot", "LogicNot"       ));
-    mixin(opadd!("popn", "PopCount"       ));
-    mixin(opadd!("brev", "BitReverse"     ));
-    mixin(opadd!("pop" , "Pop"            ));
-    mixin(opadd!("push", "Push"           ));
-    // sub-ops
-    mixin(opadd!("noop", "Noop"           ));
     mixin(opadd!("add" , "Add"            ));
     mixin(opadd!("sub" , "Subtract"       ));
     mixin(opadd!("mul" , "Multiply"       ));
@@ -154,6 +183,24 @@ shared static this() {
     mixin(opadd!("cadd", "ConditionalAdd" ));
     mixin(opadd!("ilo" , "ImmediateLow"   ));
     mixin(opadd!("ihi" , "ImmediateHigh"  ));
+    // static assert(false, opadd!("TEST", "OTHER"));
+    // sub-ops
+    mixin(opadd!("noop", "Noop"           ));
+    mixin(opadd!("ld"  , "LoadMemory"     ));
+    mixin(opadd!("st"  , "StoreMemory"    ));
+    mixin(opadd!("call", "Call"           ));
+    mixin(opadd!("ret" , "Return"         ));
+    mixin(opadd!("jmp" , "Jump"           ));
+    mixin(opadd!("bra" , "Branch"         ));
+    mixin(opadd!("bnot", "BitNot"         ));
+    mixin(opadd!("neg" , "Negate"         ));
+    mixin(opadd!("lnot", "LogicNot"       ));
+    mixin(opadd!("popn", "PopCount"       ));
+    mixin(opadd!("brev", "BitReverse"     ));
+    mixin(opadd!("pop" , "Pop"            ));
+    mixin(opadd!("push", "Push"           ));
+    // fake ops
+    mixin(opadd!("imm" , "Immediate"      ));
 }
 
 /++

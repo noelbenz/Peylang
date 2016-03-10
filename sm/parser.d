@@ -110,6 +110,7 @@ class Parser {
                     return true;
                 case OpCode.ImmediateLow:
                 case OpCode.ImmediateHigh:
+                case OpCode.Immediate:
                     inst.token = token;
                     inst.op = token.op;
                     next();

@@ -7,7 +7,7 @@ import sm;
 import std.outbuffer;
 
 int main() {
-    auto reader = new FileCodeReader("test.sm");
+    auto reader = new FileCodeReader("tarai.sm");
 
     /+
     while(!reader.empty) {

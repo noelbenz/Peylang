@@ -4,10 +4,24 @@ import pey.codereader;
 import pey.common;
 import sm;
 
+import std.stdio;
+import std.exception;
 import std.outbuffer;
 
-int main() {
-    auto reader = new FileCodeReader("sorted.sm");
+int main(string[] args) {
+
+    if(args.length != 2) {
+        printHelp();
+        return 1;
+    }
+
+    CodeReader reader;
+    try {
+        reader = new FileCodeReader(args[1]);
+    } catch(ErrnoException ex) {
+        io.writefln("File %s could not be opened. (errno = %d)", args[1], ex.errno);
+        return 1;
+    }
 
     /+
     while(!reader.empty) {
@@ -44,5 +58,14 @@ int main() {
 
 
     return 0;
+}
+
+string help = `
+SYPNOSIS:
+sm [options] FILE
+`;
+
+void printHelp() {
+    io.writeln(help);
 }
 

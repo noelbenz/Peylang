@@ -40,6 +40,9 @@ abstract class CodeReader {
     /++ Returns false iff there is more code to be read. ++/
     @property bool empty();
 
+    /++ Reset the reader to the beginning of the code. ++/
+    void reset();
+
 
     /++ Returns the position of the current code. ++/
     @property CodePosition pos();
@@ -68,6 +71,11 @@ class FileCodeReader : CodeReader {
 
     this(string path) {
         file = File(path, "r");
+        reset();
+    }
+
+    override void reset() {
+        file.seek(0);
         _pos = 0;
         updateBuffers();
     }

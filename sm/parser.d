@@ -49,8 +49,7 @@ class Parser {
 
     this(Lexer lexer) {
         this.lexer = lexer;
-        empty = false;
-        next();
+        reset();
     }
 
     void next() {
@@ -65,6 +64,11 @@ class Parser {
 
     Exception exception(string msg) {
         return new ParserException(msg, token);
+    }
+
+    void reset() {
+        empty = false;
+        next();
     }
 
     bool parseInstruction(ref Instruction inst) {

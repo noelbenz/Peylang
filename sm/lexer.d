@@ -43,7 +43,6 @@ class LexerException : Exception {
 class Lexer {
 
     CodeReader reader;
-    LiteralStorage lstore;
     dchar c;
 
     int pos;
@@ -62,11 +61,8 @@ class Lexer {
 
     this(CodeReader reader) {
         this.reader = reader;
-        this.lstore = new LiteralStorage();
 
-        pos = 1;
-        row = 1;
-        col = 1;
+        reset();
     }
 
     /++
@@ -82,6 +78,12 @@ class Lexer {
      ++/
     @property bool empty() {
         return reader.empty;
+    }
+
+    void reset() {
+        pos = 1;
+        row = 1;
+        col = 1;
     }
 
     private void next() {

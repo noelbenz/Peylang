@@ -4,9 +4,9 @@ import pey.codereader;
 import pey.common;
 import sm;
 
-import std.stdio;
 import std.exception;
 import std.outbuffer;
+import fio = std.file;
 
 int main(string[] args) {
 
@@ -22,6 +22,16 @@ int main(string[] args) {
         io.writefln("File %s could not be opened. (errno = %d)", args[1], ex.errno);
         return 1;
     }
+
+    auto lexer = new Lexer(reader);
+    auto parser = new Parser(lexer);
+    auto trans = new BinaryTranslator(parser);
+    ubyte[] data = trans.run();
+
+    fio.write("out.smo", data);
+
+
+    /+
 
     /+
     while(!reader.empty) {
@@ -50,11 +60,13 @@ int main(string[] args) {
     }
     +/
 
-    auto trans = new CTranslator(parser);
-    trans.run();
+    auto trans = new BinaryTranslator(parser);
+    io.writeln(trans.run());
 
-    io.writeln(cast(char[])trans.labels.toBytes());
-    io.writeln(cast(char[])trans.code.toBytes());
+    //io.writeln(cast(char[])trans.labels.toBytes());
+    //io.writeln(cast(char[])trans.code.toBytes());
+
+    +/
 
 
     return 0;

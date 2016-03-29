@@ -88,6 +88,8 @@ module sm.spec;
 
 
 enum OpCode {
+
+    // Sub Ops
     Noop,
     LoadMemory,
     StoreMemory,
@@ -103,6 +105,7 @@ enum OpCode {
     Pop,
     Push,
 
+    // Ops
     Add,
     Subtract,
     Multiply,
@@ -119,6 +122,7 @@ enum OpCode {
     ImmediateLow,
     ImmediateHigh,
 
+    // Phony Ops
     Immediate,
 }
 
@@ -139,6 +143,8 @@ enum SmOpCode {
     ConditionalAdd = 13,
     ImmediateLow = 14,
     ImmediateHigh = 15,
+
+    Invalid,
 }
 
 enum SmSubOpCode {
@@ -156,6 +162,22 @@ enum SmSubOpCode {
     BitReverse = 13,
     Pop = 14,
     Push = 15,
+
+    Invalid,
+}
+
+SmOpCode toOpCode(OpCode op) {
+    if(op < OpCode.Add)
+        return SmOpCode.SubOp;
+    if(op > OpCode.ImmediateHigh)
+        return SmOpCode.Invalid;
+    return cast(SmOpCode)(op - SmOpCode.Add + 1);
+}
+
+SmSubOpCode toSubOpCode(OpCode op) {
+    if(op < OpCode.Noop || op > OpCode.Push)
+        return SmSubOpCode.Invalid;
+    return cast(SmSubOpCode)(op - OpCode.Noop);
 }
 
 private immutable OpCode[dstring] opcodeLookup;

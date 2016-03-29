@@ -9,6 +9,171 @@ import pey.common;
 import sm.spec;
 import sm.parser;
 
+const int SmVersion = 6;
+
+//------------------------------------------------------------------------------
+// Binary Translator
+//------------------------------------------------------------------------------
+
+struct ResolveNode {
+    size_t relative;
+    size_t memi;
+    bool high;
+    dstring ident;
+
+    ResolveNode* next;
+}
+
+class BinaryTranslator {
+    Parser parser;
+    Instruction inst;
+    size_t[dstring] labels;
+    OutBuffer binary;
+    size_t memi;
+
+    ResolveNode* curNode = null;
+
+    this(Parser parser) {
+        this.parser = parser;
+        this.binary = new OutBuffer();
+    }
+
+    void addResolveNode(ResolveNode *node) {
+        if(curNode == null) {
+            curNode = node;
+        } else {
+            node.next = curNode;
+            curNode = node;
+        }
+    }
+
+    void writeInstruction(ushort bin) {
+        binary.write(cast(byte)(bin >> 8));
+        binary.write(cast(byte)bin);
+        memi += 2;
+    }
+
+    void writeImmediate(SmOpCode op, int dest, int value, dstring ident) {
+
+        bool high = (op == SmOpCode.ImmediateHigh);
+        if(high)
+            value >>= 8;
+
+        ushort bin = cast(ushort)op;
+        bin <<= 4;
+        bin |= dest & 0xF;
+        bin <<= 8;
+        bin |= value & 0xFF;
+
+        if(ident.length > 0) {
+            ResolveNode* node = new ResolveNode();
+            node.relative = 0;
+            node.memi = memi+1;
+            node.high = high;
+            node.ident = ident;
+
+            addResolveNode(node);
+        }
+
+        writeInstruction(bin);
+    }
+
+    void outputInstruction() {
+
+        if(inst.label.length != 0) {
+            labels[inst.label] = memi;
+            return;
+        }
+
+        ushort bin;
+        switch(inst.op) {
+        case OpCode.Noop:
+            writeInstruction(0);
+            break;
+
+        // Reg-Reg
+        case OpCode.LoadMemory: .. case OpCode.Push:
+            bin = cast(ushort)(inst.args[0].value & 0xF);
+            bin <<= 4;
+            bin |= toSubOpCode(inst.op) & 0xF;
+            bin <<= 4;
+            bin |= inst.args[1].value & 0xF;
+
+            writeInstruction(bin);
+            break;
+
+        // Reg-Reg-Reg
+        case OpCode.Add: .. case OpCode.ConditionalAdd:
+            bin = cast(ushort)toOpCode(inst.op);
+            bin <<= 4;
+            bin |= inst.args[0].value & 0xF;
+            bin <<= 4;
+            bin |= inst.args[1].value & 0xF;
+            bin <<= 4;
+            bin |= inst.args[2].value & 0xF;
+
+            writeInstruction(bin);
+            break;
+
+        // Immediate
+        case OpCode.ImmediateHigh:
+        case OpCode.ImmediateLow:
+            writeImmediate(toOpCode(inst.op), inst.args[0].value,
+                inst.args[1].value, inst.args[1].ident);
+            break;
+
+        // Special
+        case OpCode.Immediate:
+            writeImmediate(SmOpCode.ImmediateLow, inst.args[0].value,
+                inst.args[1].value, inst.args[1].ident);
+            writeImmediate(SmOpCode.ImmediateHigh, inst.args[0].value,
+                inst.args[1].value, inst.args[1].ident);
+            break;
+
+        default:
+            // Cases should be complete.
+            assert(false);
+            break;
+        }
+
+    }
+
+    void resolve(ubyte[] mem) {
+        while(curNode != null) {
+            size_t* search = (curNode.ident in labels);
+            if(search == null)
+                throw new Exception(format("Unable to resolve label %d.", curNode.ident));
+
+            size_t value = *search;
+
+            // TODO: Relative
+            if(curNode.high)
+                value = value >> 8;
+            mem[curNode.memi] = cast(ubyte)value;
+
+            curNode = curNode.next;
+        }
+    }
+
+    ubyte[] run() {
+        memi = 0;
+        while(!parser.empty) {
+            if(parser.parseInstruction(inst))
+                outputInstruction();
+        }
+
+        ubyte[] mem = binary.toBytes();
+
+        resolve(mem);
+
+        return mem;
+    }
+}
+
+//------------------------------------------------------------------------------
+// C Translator
+//------------------------------------------------------------------------------
+
 private immutable string[OpCode] convtbl;
 
 string toOpMacro(OpCode op) {
@@ -87,7 +252,12 @@ class CTranslator {
             }
         } else if(isSubOp(inst.op)) {
             string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8s, %4d);\n";
-            code.writef(fmt, addr, "SUBOP", 0, inst.args[0].value, opMacro, inst.args[2].value);
+            string subop;
+            if(SmVersion < 5)
+                subop = "SUBOP";
+            else
+                subop = "SUB_OP";
+            code.writef(fmt, addr, subop, 0, inst.args[0].value, opMacro, inst.args[2].value);
             addr++;
         } else {
             string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";
@@ -99,8 +269,13 @@ class CTranslator {
     void run() {
         addr = 0;
         immN = 0;
-        labels.writef("#define L(VAL) VAL & 0x00FF\n");
-        labels.writef("#define H(VAL) (VAL>>8) & 0x00FF\n\n");
+        if(SmVersion < 5) {
+            labels.writef("#define L(VAL) VAL & 0x00FF\n");
+            labels.writef("#define H(VAL) (VAL>>8) & 0x00FF\n\n");
+        } else {
+            labels.writef("#define L(VAL) VAL\n");
+            labels.writef("#define H(VAL) VAL\n\n");
+        }
         labels.writef("// Labels\n");
         while(!parser.empty) {
             if(parser.parseInstruction(inst))

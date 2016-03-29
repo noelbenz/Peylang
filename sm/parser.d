@@ -19,14 +19,24 @@ class ParserException : Exception {
     }
 }
 
+struct Argument {
+    dstring ident;
+    int value;
+
+    this(int value) {
+        ident = new dchar[0];
+        this.value = value;
+    }
+
+    this(dstring ident) {
+        this.ident = ident;
+    }
+}
+
 struct Instruction {
     Token token;
     OpCode op;
-    int rega;
-    int regb;
-    int regc;
-    int imm;
-    dstring immL;
+    Argument[3] args;
 
     dstring label;
 }
@@ -67,8 +77,9 @@ class Parser {
                 next();
                 return true;
             }
+
             inst.label = new dchar[0];
-            inst.immL = new dchar[0];
+
             if(token.type != TokenType.Op)
                 throw exception("Expected an Op or Identifier.");
             switch(token.op) {
@@ -83,15 +94,15 @@ class Parser {
                     next();
                     // dest
                     expect(TokenType.Register);
-                    inst.regc = token.imm;
+                    inst.args[0] = Argument(token.imm);
                     next();
                     // left / condition
                     expect(TokenType.Register);
-                    inst.regb = token.imm;
+                    inst.args[1] = Argument(token.imm);
                     next();
                     // right / value
                     expect(TokenType.Register);
-                    inst.rega = token.imm;
+                    inst.args[2] = Argument(token.imm);
                     next();
                     return true;
                 case OpCode.LoadMemory: .. case OpCode.Call:
@@ -101,11 +112,11 @@ class Parser {
                     next();
                     // dest / condition
                     expect(TokenType.Register);
-                    inst.regc = token.imm;
+                    inst.args[0] = Argument(token.imm);
                     next();
                     // other
                     expect(TokenType.Register);
-                    inst.rega = token.imm;
+                    inst.args[1] = Argument(token.imm);
                     next();
                     return true;
                 case OpCode.ImmediateLow:
@@ -116,13 +127,13 @@ class Parser {
                     next();
                     // dest
                     expect(TokenType.Register);
-                    inst.regc = token.imm;
+                    inst.args[0] = Argument(token.imm);
                     next();
                     // immediate
                     if(token.type == TokenType.Immediate) {
-                        inst.imm = token.imm;
+                        inst.args[1] = Argument(token.imm);
                     } else if(token.type == TokenType.Identifier) {
-                        inst.immL = token.ident;
+                        inst.args[1] = Argument(token.ident);
                     } else {
                         exception(format(
                             "Expected immediate or identifier, got %s.",
@@ -136,7 +147,7 @@ class Parser {
                     next();
                     // stack pointer
                     expect(TokenType.Register);
-                    inst.rega = token.imm;
+                    inst.args[0] = Argument(token.imm);
                     next();
                     return true;
                 default:

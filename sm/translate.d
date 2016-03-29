@@ -69,32 +69,31 @@ class CTranslator {
         string opMacro = toOpMacro(inst.op);
         if(isImmOp(inst.op)) {
             string val;
-            if(inst.immL.length == 0)
-                val = to!string(inst.imm);
+            if(inst.args[1].ident.length == 0)
+                val = to!string(inst.args[1].value);
             else
-                val = "L_" ~ toUTF8(inst.immL);
+                val = "L_" ~ toUTF8(inst.args[1].ident);
 
             if(inst.op != OpCode.Immediate) {
                 string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
-                code.writef(fmt, addr, opMacro, val, inst.regc);
+                code.writef(fmt, addr, opMacro, val, inst.args[0].value);
                 addr++;
             } else {
                 string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
-                code.writef(fmt, addr, "IMMLOW", "L(" ~ val ~ ")", inst.regc);
+                code.writef(fmt, addr, "IMMLOW", "L(" ~ val ~ ")", inst.args[0].value);
                 addr++;
-                code.writef(fmt, addr, "IMMHGH", "H(" ~ val ~ ")", inst.regc);
+                code.writef(fmt, addr, "IMMHGH", "H(" ~ val ~ ")", inst.args[0].value);
                 addr++;
             }
         } else if(isSubOp(inst.op)) {
             string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8s, %4d);\n";
-            code.writef(fmt, addr, "SUBOP", 0, inst.regc, opMacro, inst.rega);
+            code.writef(fmt, addr, "SUBOP", 0, inst.args[0].value, opMacro, inst.args[2].value);
             addr++;
         } else {
             string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";
-            code.writef(fmt, addr, opMacro, 0, inst.regc, inst.regb, inst.rega);
+            code.writef(fmt, addr, opMacro, 0, inst.args[0].value, inst.args[1].value, inst.args[2].value);
             addr++;
         }
-
     }
 
     void run() {

@@ -204,7 +204,7 @@ shared static this() {
 }
 
 /++
-  + Determines the opcode and subopcode form a dchar op name.
+  + Determines the opcode from a dchar op name.
   +
   + Returns false iff the op name is not a recognized opcode.
  ++/

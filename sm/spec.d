@@ -128,8 +128,12 @@ enum OpCode {
     Move,
 
     Alias,
+    Offset,
     Stack,
     Target,
+
+    Label,
+    Data,
 }
 
 enum SmOpCode {
@@ -233,6 +237,7 @@ shared static this() {
     mixin(opadd!("mov"   , "Move"         ));
 
     mixin(opadd!("alias" , "Alias"        ));
+    mixin(opadd!("off"   , "Offset"       ));
     mixin(opadd!("stack" , "Stack"        ));
     mixin(opadd!("target", "Target"       ));
 }

@@ -2,6 +2,7 @@
 module sm.translate;
 
 import std.outbuffer;
+import std.bitmanip;
 import std.utf;
 
 import pey.common;
@@ -28,14 +29,16 @@ class BinaryTranslator {
     Parser parser;
     Instruction inst;
     size_t[dstring] labels;
-    OutBuffer binary;
+    ubyte[] mem;
     size_t memi;
+    size_t memhigh;
 
     ResolveNode* curNode = null;
 
     this(Parser parser) {
         this.parser = parser;
-        this.binary = new OutBuffer();
+
+        mem = new ubyte[65536 * 2];
     }
 
     void addResolveNode(ResolveNode *node) {
@@ -47,10 +50,20 @@ class BinaryTranslator {
         }
     }
 
-    void writeInstruction(ushort bin) {
-        binary.write(cast(byte)(bin >> 8));
-        binary.write(cast(byte)bin);
-        memi += 2;
+    void write(ushort val) {
+        version(BigEndian) {
+            mem[memi] = cast(ubyte)(val >> 8);
+            memi++;
+            mem[memi] = cast(ubyte)(val     );
+            memi++;
+        } else {
+            mem[memi] = cast(ubyte)(val     );
+            memi++;
+            mem[memi] = cast(ubyte)(val >> 8);
+            memi++;
+        }
+        if(memi > memhigh)
+            memhigh = memi;
     }
 
     void writeImmediate(SmOpCode op, int dest, int value, dstring ident) {
@@ -59,60 +72,69 @@ class BinaryTranslator {
         if(high)
             value >>= 8;
 
-        ushort bin = cast(ushort)op;
-        bin <<= 4;
-        bin |= dest & 0xF;
-        bin <<= 8;
-        bin |= value & 0xFF;
+        ushort val = cast(ushort)op;
+        val <<= 4;
+        val |= dest & 0xF;
+        val <<= 8;
+        val |= value & 0xFF;
 
         if(ident.length > 0) {
             ResolveNode* node = new ResolveNode();
             node.relative = 0;
-            node.memi = memi+1;
             node.high = high;
             node.ident = ident;
+
+            version(BigEndian)
+                node.memi = memi+1;
+            else
+                node.memi = memi;
 
             addResolveNode(node);
         }
 
-        writeInstruction(bin);
+        write(val);
     }
 
     void outputInstruction() {
 
-        if(inst.label.length != 0) {
-            labels[inst.label] = memi;
-            return;
-        }
-
-        ushort bin;
+        ushort val;
         switch(inst.op) {
+        case OpCode.Label:
+            labels[inst.label] = memi;
+            break;
+        case OpCode.Data:
+            write(cast(ushort)inst.data);
+            break;
+        case OpCode.Offset:
+            memi = inst.data;
+            break;
+
         case OpCode.Noop:
-            writeInstruction(0);
+            write(0);
             break;
 
         // Reg-Reg
         case OpCode.LoadMemory: .. case OpCode.Push:
-            bin = cast(ushort)(inst.args[0].value & 0xF);
-            bin <<= 4;
-            bin |= toSubOpCode(inst.op) & 0xF;
-            bin <<= 4;
-            bin |= inst.args[1].value & 0xF;
+            val = cast(ushort)(inst.args[0].value & 0xF);
+            val <<= 4;
+            val |= toSubOpCode(inst.op) & 0xF;
+            val <<= 4;
+            val |= inst.args[1].value & 0xF;
 
-            writeInstruction(bin);
+            write(val);
             break;
 
         // Reg-Reg-Reg
         case OpCode.Add: .. case OpCode.ConditionalAdd:
-            bin = cast(ushort)toOpCode(inst.op);
-            bin <<= 4;
-            bin |= inst.args[0].value & 0xF;
-            bin <<= 4;
-            bin |= inst.args[1].value & 0xF;
-            bin <<= 4;
-            bin |= inst.args[2].value & 0xF;
+            val = cast(ushort)toOpCode(inst.op);
+            val <<= 4;
+            val |= inst.args[0].value & 0xF;
+            val <<= 4;
+            val |= inst.args[1].value & 0xF;
+            val <<= 4;
+            val |= inst.args[2].value & 0xF;
 
-            writeInstruction(bin);
+            write(val);
             break;
 
         // Immediate
@@ -138,15 +160,15 @@ class BinaryTranslator {
 
     }
 
-    void resolve(ubyte[] mem) {
+    void resolve() {
         while(curNode != null) {
             size_t* search = (curNode.ident in labels);
             if(search == null)
                 throw new Exception(format("Unable to resolve label %d.", curNode.ident));
 
-            size_t value = *search;
+            size_t value = *search / 2;
 
-            // TODO: Relative
+            // TODO: Relative for branch instruction
             if(curNode.high)
                 value = value >> 8;
             mem[curNode.memi] = cast(ubyte)value;
@@ -157,16 +179,15 @@ class BinaryTranslator {
 
     ubyte[] run() {
         memi = 0;
+        memhigh = 0;
         while(!parser.empty) {
             if(parser.parseInstruction(inst))
                 outputInstruction();
         }
 
-        ubyte[] mem = binary.toBytes();
+        resolve();
 
-        resolve(mem);
-
-        return mem;
+        return mem[0..memhigh];
     }
 }
 
@@ -224,10 +245,19 @@ class CTranslator {
     }
 
     void outputCode() {
-        if(inst.label.length != 0) {
+        if(inst.op == OpCode.Label) {
             string label = toUTF8(inst.label);
             labels.writef("const u16 L_%s = %d;\n", label, addr);
             code.writef("// %s\n", label);
+            return;
+        }
+        if(inst.op == OpCode.Data) {
+            code.writef("mem[%5d] = %d;\n", addr, inst.data);
+            addr++;
+            return;
+        }
+        if(inst.op == OpCode.Offset) {
+            addr = inst.data;
             return;
         }
 
@@ -240,18 +270,18 @@ class CTranslator {
                 val = "L_" ~ toUTF8(inst.args[1].ident);
 
             if(inst.op != OpCode.Immediate) {
-                string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
+                string fmt = "mem[%5d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
                 code.writef(fmt, addr, opMacro, val, inst.args[0].value);
                 addr++;
             } else {
-                string fmt = "mem[%4d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
+                string fmt = "mem[%5d] = make_inst(%8s, %16s, %4d,        0,    0);\n";
                 code.writef(fmt, addr, "IMMLOW", "L(" ~ val ~ ")", inst.args[0].value);
                 addr++;
                 code.writef(fmt, addr, "IMMHGH", "H(" ~ val ~ ")", inst.args[0].value);
                 addr++;
             }
         } else if(isSubOp(inst.op)) {
-            string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8s, %4d);\n";
+            string fmt = "mem[%5d] = make_inst(%8s, %16d, %4d, %8s, %4d);\n";
             string subop;
             if(SmVersion < 5)
                 subop = "SUBOP";
@@ -260,7 +290,7 @@ class CTranslator {
             code.writef(fmt, addr, subop, 0, inst.args[0].value, opMacro, inst.args[1].value);
             addr++;
         } else {
-            string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";
+            string fmt = "mem[%5d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";
             code.writef(fmt, addr, opMacro, 0, inst.args[0].value, inst.args[1].value, inst.args[2].value);
             addr++;
         }

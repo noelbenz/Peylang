@@ -39,6 +39,8 @@ struct Instruction {
     Argument[3] args;
 
     dstring label;
+
+    int data;
 }
 
 class Parser {
@@ -109,14 +111,20 @@ class Parser {
         while(!empty) {
             if(token.type == TokenType.Identifier) {
                 inst.token = token;
+                inst.op = OpCode.Label;
                 inst.label = token.ident;
                 next();
                 expect(TokenType.Colon);
                 next();
                 return true;
             }
-
-            inst.label = new dchar[0];
+            if(token.type == TokenType.Immediate) {
+                inst.token = token;
+                inst.op = OpCode.Data;
+                inst.data = token.imm;
+                next();
+                return true;
+            }
 
             if(token.type != TokenType.Op)
                 throw exception("Expected an Op or Identifier.");
@@ -231,6 +239,15 @@ class Parser {
                     aliases[ident] = token.imm;
                     next();
                     break;
+                case OpCode.Offset:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    // address
+                    expect(TokenType.Immediate);
+                    inst.data = token.imm;
+                    next();
+                    return true;
                 case OpCode.Stack:
                     next();
                     // register

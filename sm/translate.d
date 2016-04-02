@@ -257,7 +257,7 @@ class CTranslator {
                 subop = "SUBOP";
             else
                 subop = "SUB_OP";
-            code.writef(fmt, addr, subop, 0, inst.args[0].value, opMacro, inst.args[2].value);
+            code.writef(fmt, addr, subop, 0, inst.args[0].value, opMacro, inst.args[1].value);
             addr++;
         } else {
             string fmt = "mem[%4d] = make_inst(%8s, %16d, %4d, %8d, %4d);\n";

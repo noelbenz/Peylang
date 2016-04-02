@@ -47,6 +47,8 @@ class Parser {
     Token token;
     bool empty;
 
+    int regStack = 15;
+
     int[dstring] aliases;
 
     this(Lexer lexer) {
@@ -73,20 +75,24 @@ class Parser {
         next();
     }
 
-    private int getRegister() {
+    private int getRegister(int def = -1) {
         int reg;
 
         if(token.type == TokenType.Register) {
             reg = token.imm;
         } else if(token.type == TokenType.Identifier) {
             int* ptr = (token.ident in aliases);
-            if(ptr == null)
+            if(ptr == null) {
+                if(def != -1) return def;
                 throw exception(format("Expected a register, got %s.", token.type));
+            }
             reg = *ptr;
         } else {
+            if(def != -1) return def;
             throw exception(format("Expected a register, got %s.", token.type));
         }
 
+        next();
         return reg;
     }
 
@@ -117,25 +123,46 @@ class Parser {
                     next();
                     // dest
                     inst.args[0] = Argument(getRegister());
-                    next();
                     // left / condition
                     inst.args[1] = Argument(getRegister());
-                    next();
                     // right / value
                     inst.args[2] = Argument(getRegister());
-                    next();
                     return true;
-                case OpCode.LoadMemory: .. case OpCode.Call:
-                case OpCode.Jump: .. case OpCode.Push:
+                case OpCode.LoadMemory:
+                case OpCode.StoreMemory:
+                case OpCode.Jump:
+                case OpCode.Branch:
+                case OpCode.BitNot:
+                case OpCode.Negate:
+                case OpCode.LogicNot:
+                case OpCode.PopCount:
+                case OpCode.BitReverse:
                     inst.token = token;
                     inst.op = token.op;
                     next();
                     // dest / condition
                     inst.args[0] = Argument(getRegister());
-                    next();
                     // other
                     inst.args[1] = Argument(getRegister());
+                    return true;
+                // Implicit stack ops
+                case OpCode.Call:
+                case OpCode.Pop:
+                case OpCode.Push:
+                    inst.token = token;
+                    inst.op = token.op;
                     next();
+                    // dest
+                    inst.args[0] = Argument(getRegister());
+                    // right / value
+                    inst.args[1] = Argument(getRegister(regStack));
+                    return true;
+                case OpCode.Return:
+                    inst.token = token;
+                    inst.op = token.op;
+                    next();
+                    // stack pointer
+                    inst.args[0] = Argument(getRegister(regStack));
                     return true;
                 case OpCode.ImmediateLow:
                 case OpCode.ImmediateHigh:
@@ -145,7 +172,6 @@ class Parser {
                     next();
                     // dest
                     inst.args[0] = Argument(getRegister());
-                    next();
                     // immediate
                     if(token.type == TokenType.Immediate) {
                         inst.args[1] = Argument(token.imm);
@@ -169,14 +195,13 @@ class Parser {
                     aliases[ident] = token.imm;
                     next();
                     break;
-                case OpCode.Return:
-                    inst.token = token;
-                    inst.op = token.op;
+                case OpCode.Stack:
                     next();
-                    // stack pointer
-                    inst.args[0] = Argument(getRegister());
+                    // register
+                    expect(TokenType.Register);
+                    regStack = token.imm;
                     next();
-                    return true;
+                    break;
                 default:
                     throw exception(format("Unrecognized Opcode: %s", token.op));
             }

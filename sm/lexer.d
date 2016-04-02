@@ -315,6 +315,11 @@ class Lexer {
                 next();
                 token.type = TokenType.Colon;
                 return true;
+            case ';':
+                next();
+                while(c != '\n')
+                    next();
+                break;
             case '\n':
                 next();
                 newLine();

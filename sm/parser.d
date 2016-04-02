@@ -47,17 +47,19 @@ class Parser {
     Token token;
     bool empty;
 
+    int[dstring] aliases;
+
     this(Lexer lexer) {
         this.lexer = lexer;
         reset();
     }
 
-    void next() {
+    private void next() {
         if(empty) return;
         empty = !lexer.parseToken(token);
     }
 
-    void expect(TokenType type) {
+    private void expect(TokenType type) {
         if(token.type != type)
             throw exception(format("Expected %s, got %s.", type, token.type));
     }
@@ -69,6 +71,23 @@ class Parser {
     void reset() {
         empty = false;
         next();
+    }
+
+    private int getRegister() {
+        int reg;
+
+        if(token.type == TokenType.Register) {
+            reg = token.imm;
+        } else if(token.type == TokenType.Identifier) {
+            int* ptr = (token.ident in aliases);
+            if(ptr == null)
+                throw exception(format("Expected a register, got %s.", token.type));
+            reg = *ptr;
+        } else {
+            throw exception(format("Expected a register, got %s.", token.type));
+        }
+
+        return reg;
     }
 
     bool parseInstruction(ref Instruction inst) {
@@ -97,16 +116,13 @@ class Parser {
                     inst.op = token.op;
                     next();
                     // dest
-                    expect(TokenType.Register);
-                    inst.args[0] = Argument(token.imm);
+                    inst.args[0] = Argument(getRegister());
                     next();
                     // left / condition
-                    expect(TokenType.Register);
-                    inst.args[1] = Argument(token.imm);
+                    inst.args[1] = Argument(getRegister());
                     next();
                     // right / value
-                    expect(TokenType.Register);
-                    inst.args[2] = Argument(token.imm);
+                    inst.args[2] = Argument(getRegister());
                     next();
                     return true;
                 case OpCode.LoadMemory: .. case OpCode.Call:
@@ -115,12 +131,10 @@ class Parser {
                     inst.op = token.op;
                     next();
                     // dest / condition
-                    expect(TokenType.Register);
-                    inst.args[0] = Argument(token.imm);
+                    inst.args[0] = Argument(getRegister());
                     next();
                     // other
-                    expect(TokenType.Register);
-                    inst.args[1] = Argument(token.imm);
+                    inst.args[1] = Argument(getRegister());
                     next();
                     return true;
                 case OpCode.ImmediateLow:
@@ -130,8 +144,7 @@ class Parser {
                     inst.op = token.op;
                     next();
                     // dest
-                    expect(TokenType.Register);
-                    inst.args[0] = Argument(token.imm);
+                    inst.args[0] = Argument(getRegister());
                     next();
                     // immediate
                     if(token.type == TokenType.Immediate) {
@@ -145,13 +158,23 @@ class Parser {
                     }
                     next();
                     return true;
+                case OpCode.Alias:
+                    next();
+                    // name
+                    expect(TokenType.Identifier);
+                    dstring ident = token.ident;
+                    next();
+                    // value
+                    expect(TokenType.Register);
+                    aliases[ident] = token.imm;
+                    next();
+                    break;
                 case OpCode.Return:
                     inst.token = token;
                     inst.op = token.op;
                     next();
                     // stack pointer
-                    expect(TokenType.Register);
-                    inst.args[0] = Argument(token.imm);
+                    inst.args[0] = Argument(getRegister());
                     next();
                     return true;
                 default:

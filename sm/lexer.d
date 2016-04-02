@@ -117,12 +117,124 @@ class Lexer {
         return exception(msg, pos, row, col);
     }
 
-    private void parseNumber(ref Token token, int init, bool negative) {
-        token.imm = init;
-        while(c >= 0x30 && c <= 0x39) {
-            token.imm = 10*token.imm + (cast(int)c & 0b00001111);
+    private void parseNumber(ref Token token, bool negative) {
+
+        int radix = 10;
+        if(c == '0') {
+            next();
+            if(c == 'x' || c == 'X') {
+                radix = 16;
+                next();
+            } else if(c == 'b' || c == 'B') {
+                radix = 2;
+                next();
+            }
+        }
+
+
+        token.imm = 0;
+        bool done;
+
+        while(true) {
+            switch(c) {
+            case '0':
+                token.imm = token.imm*radix + 0;
+                break;
+            case '1':
+                token.imm = token.imm*radix + 1;
+                break;
+            case '2':
+                if(radix < 3) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 2;
+                break;
+            case '3':
+                if(radix < 4) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 3;
+                break;
+            case '4':
+                if(radix < 5) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 4;
+                break;
+            case '5':
+                if(radix < 6) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 5;
+                break;
+            case '6':
+                if(radix < 7) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 6;
+                break;
+            case '7':
+                if(radix < 8) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 7;
+                break;
+            case '8':
+                if(radix < 9) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 8;
+                break;
+            case '9':
+                if(radix < 10) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 9;
+                break;
+            case 'A':
+            case 'a':
+                if(radix < 11) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 10;
+                break;
+            case 'B':
+            case 'b':
+                if(radix < 12) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 11;
+                break;
+            case 'C':
+            case 'c':
+                if(radix < 13) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 12;
+                break;
+            case 'D':
+            case 'd':
+                if(radix < 14) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 13;
+                break;
+            case 'E':
+            case 'e':
+                if(radix < 15) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 14;
+                break;
+            case 'F':
+            case 'f':
+                if(radix < 16) throw exception(format(
+                    "Radix %d number cannot contain digit %c.", radix, c));
+                token.imm = token.imm*radix + 15;
+                break;
+            case ' ':
+            case '\t':
+            case '\r':
+            case '\n':
+                done = true;
+                break;
+            default:
+                exception(format("Expected a digit, not %d.", c));
+            }
+
             if(token.imm > ImmediateMax)
                 throw exception(ImmediateOutOfRangeMsg);
+
+            if(done)
+                break;
+
             next();
         }
         if(negative) {
@@ -150,13 +262,11 @@ class Lexer {
             case '-':
                 fillToken(token);
                 next();
-                parseNumber(token, 0, true);
+                parseNumber(token, true);
                 return true;
             case '0': .. case'9':
                 fillToken(token);
-                int init = (cast(int)c & 0b00001111);
-                next();
-                parseNumber(token, init, false);
+                parseNumber(token, false);
                 return true;
             case 'r':
                 dchar nextc = reader.peek(1);
@@ -164,7 +274,7 @@ class Lexer {
                     goto identifier;
                 fillToken(token);
                 next();
-                parseNumber(token, 0, false);
+                parseNumber(token, false);
                 if(token.imm > 15)
                     throw exception(format("Register number %d does not exist.",
                                            token.imm));

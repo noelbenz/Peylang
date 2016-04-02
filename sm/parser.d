@@ -48,8 +48,12 @@ class Parser {
     bool empty;
 
     int regStack = 15;
+    int regTarget = 14;
 
     int[dstring] aliases;
+
+    Instruction[8] instBuf;
+    Instruction[] instAux;
 
     this(Lexer lexer) {
         this.lexer = lexer;
@@ -97,6 +101,11 @@ class Parser {
     }
 
     bool parseInstruction(ref Instruction inst) {
+        if(instAux.length > 0) {
+            inst = instAux[0];
+            instAux = instAux[1..$];
+            return true;
+        }
         while(!empty) {
             if(token.type == TokenType.Identifier) {
                 inst.token = token;
@@ -164,6 +173,22 @@ class Parser {
                     // stack pointer
                     inst.args[0] = Argument(getRegister(regStack));
                     return true;
+                case OpCode.ShortCall:
+                    inst.token = token;
+                    inst.op = OpCode.Immediate;
+                    next();
+                    // address
+                    expect(TokenType.Identifier);
+                    inst.args[0] = Argument(regTarget);
+                    inst.args[1] = Argument(token.ident);
+                    next();
+
+                    instBuf[0].op = OpCode.Call;
+                    instBuf[0].token = token;
+                    instBuf[0].args[0] = Argument(regTarget);
+                    instBuf[0].args[1] = Argument(regStack);
+                    instAux = instBuf[0..1];
+                    return true;
                 case OpCode.ImmediateLow:
                 case OpCode.ImmediateHigh:
                 case OpCode.Immediate:
@@ -200,6 +225,13 @@ class Parser {
                     // register
                     expect(TokenType.Register);
                     regStack = token.imm;
+                    next();
+                    break;
+                case OpCode.Target:
+                    next();
+                    // register
+                    expect(TokenType.Register);
+                    regTarget = token.imm;
                     next();
                     break;
                 default:

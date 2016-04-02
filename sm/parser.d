@@ -154,6 +154,17 @@ class Parser {
                     // other
                     inst.args[1] = Argument(getRegister());
                     return true;
+                case OpCode.Move:
+                    inst.token = token;
+                    inst.op = OpCode.ConditionalMove;
+                    next();
+                    // dest
+                    inst.args[0] = Argument(getRegister());
+                    // condition
+                    inst.args[1] = Argument(regStack);
+                    // source
+                    inst.args[2] = Argument(getRegister());
+                    return true;
                 // Implicit stack ops
                 case OpCode.Call:
                 case OpCode.Pop:

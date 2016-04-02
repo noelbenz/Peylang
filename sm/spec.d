@@ -125,6 +125,7 @@ enum OpCode {
     // Phony Ops
     Immediate,
     ShortCall,
+    Move,
 
     Alias,
     Stack,
@@ -229,6 +230,7 @@ shared static this() {
     // fake ops
     mixin(opadd!("imm"   , "Immediate"    ));
     mixin(opadd!("scll"  , "ShortCall"    ));
+    mixin(opadd!("mov"   , "Move"         ));
 
     mixin(opadd!("alias" , "Alias"        ));
     mixin(opadd!("stack" , "Stack"        ));

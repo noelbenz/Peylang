@@ -214,22 +214,6 @@ bool isImmOp(OpCode op) {
            op == OpCode.Immediate;
 }
 
-/+
-string toCode(Instruction inst, int address) {
-    string opMacro = toOp(inst.op);
-    if(isImmOp(inst.op)) {
-        string fmt = "mem[%d] = make_inst(%8s, %6d, %4d,        0,    0);\n";
-        return format(fmt, address, opMacro, inst.imm, inst.regc);
-    } else if(isSubOp(inst.op)) {
-        string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8s, %4d);\n";
-        return format(fmt, address, "SUBOP", inst.regc, opMacro, inst.rega);
-    } else {
-        string fmt = "mem[%d] = make_inst(%8s,      0, %4d, %8d, %4d);\n";
-        return format(fmt, address, opMacro, inst.regc, inst.regb, inst.rega);
-    }
-}
-+/
-
 class CTranslator {
     Parser parser;
     Instruction inst;

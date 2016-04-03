@@ -81,7 +81,7 @@ class Parser {
         next();
     }
 
-    private int getRegister(int def = -1) {
+    private int getRegister(int def = -1, bool gotoNext = true) {
         int reg;
 
         if(token.type == TokenType.Register) {
@@ -97,8 +97,8 @@ class Parser {
             if(def != -1) return def;
             throw exception(format("Expected a register, got %s.", token.type));
         }
-
-        next();
+        if(gotoNext)
+            next();
         return reg;
     }
 
@@ -127,7 +127,7 @@ class Parser {
             }
 
             if(token.type != TokenType.Op)
-                throw exception("Expected an Op or Identifier.");
+                throw exception("Expected an Op, Identifier, or Data.");
             switch(token.op) {
                 case OpCode.Noop:
                     inst.token = token;
@@ -147,7 +147,6 @@ class Parser {
                     return true;
                 case OpCode.LoadMemory:
                 case OpCode.StoreMemory:
-                case OpCode.Jump:
                 case OpCode.Branch:
                 case OpCode.BitNot:
                 case OpCode.Negate:
@@ -161,6 +160,59 @@ class Parser {
                     inst.args[0] = Argument(getRegister());
                     // other
                     inst.args[1] = Argument(getRegister());
+                    return true;
+                case OpCode.ShortJump:
+                    inst.token = token;
+                    next();
+                    int regAddress = getRegister(-2, false);
+                    // jmp LABEL (unconditional, implicit target)
+                    if(regAddress == -2) {
+                        expect(TokenType.Identifier);
+                        inst.op = OpCode.Immediate;
+                        inst.args[0] = Argument(regTarget);
+                        inst.args[1] = Argument(token.ident);
+                        next();
+
+                        instBuf[0].op = OpCode.Jump;
+                        instBuf[0].token = inst.token;
+                        instBuf[0].args[0] = Argument(regStack);
+                        instBuf[0].args[1] = Argument(regTarget);
+                        instAux = instBuf[0..1];
+                        return true;
+                    }
+                    next();
+                    // jmp REG (unconditional)
+                    inst.op = OpCode.Jump;
+                    inst.args[0] = Argument(regStack);
+                    // address
+                    inst.args[1] = Argument(regAddress);
+                    return true;
+                case OpCode.Jump:
+                    inst.token = token;
+                    next();
+                    int regCondition = getRegister();
+                    int regAddress = getRegister(-2, false);
+                    // jmp REG LABEL (implicit target)
+                    if(regAddress == -2) {
+                        expect(TokenType.Identifier);
+                        inst.op = OpCode.Immediate;
+                        inst.args[0] = Argument(regTarget);
+                        inst.args[1] = Argument(token.ident);
+                        next();
+
+                        instBuf[0].op = OpCode.Jump;
+                        instBuf[0].token = inst.token;
+                        instBuf[0].args[0] = Argument(regCondition);
+                        instBuf[0].args[1] = Argument(regTarget);
+                        instAux = instBuf[0..1];
+                        return true;
+                    }
+                    next();
+                    // jmp REG REG
+                    inst.op = OpCode.Jump;
+                    inst.args[0] = Argument(regCondition);
+                    // address
+                    inst.args[1] = Argument(regAddress);
                     return true;
                 case OpCode.Move:
                     inst.token = token;

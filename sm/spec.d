@@ -182,7 +182,7 @@ SmOpCode toOpCode(OpCode op) {
         return SmOpCode.SubOp;
     if(op > OpCode.ImmediateHigh)
         return SmOpCode.Invalid;
-    return cast(SmOpCode)(op - SmOpCode.Add + 1);
+    return cast(SmOpCode)(op - OpCode.Add + 1);
 }
 
 SmSubOpCode toSubOpCode(OpCode op) {

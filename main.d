@@ -13,6 +13,7 @@ struct Options {
     bool saveLexer = false;
     bool saveParser = false;
     bool ctranslate = false;
+    bool execute = false;
     string outputFile = "out.smo";
 }
 
@@ -45,6 +46,9 @@ void parseOptions(ref Options opt, string[] args) {
                     break;
                 case 'c':
                     opt.ctranslate = true;
+                    break;
+                case 'x':
+                    opt.execute = true;
                     break;
                 case 'o':
                     specialOpt = arg[j];
@@ -86,27 +90,13 @@ void parseOptions(ref Options opt, string[] args) {
     }
 }
 
-int main(string[] args) {
-
-    if(args.length < 2) {
-        printHelp();
-        return 1;
-    }
-
-    Options options = Options();
-
-    try {
-        parseOptions(options, args[1..$-1]);
-    } catch(OptionException ex)  {
-        io.writefln("Option parsing failure: %s", ex.msg);
-        return 1;
-    }
+int compile(Options options, string filename) {
 
     CodeReader reader;
     try {
-        reader = new FileCodeReader(args[$-1]);
+        reader = new FileCodeReader(filename);
     } catch(ErrnoException ex) {
-        io.writefln("File %s could not be opened. (errno = %d)", args[1], ex.errno);
+        io.writefln("File %s could not be opened. (errno = %d)", filename, ex.errno);
         return 1;
     }
 
@@ -158,9 +148,56 @@ int main(string[] args) {
         fio.write("parser.out", buffer.toBytes());
     }
 
+    return 0;
+}
 
+int execute(Options options, string filename) {
+
+    ubyte[] code = cast(ubyte[])fio.read(filename);
+    if(code.length > 65536*ushort.sizeof) {
+        io.writefln("File is too large for sm: %d bytes, max is 65536.", code.length);
+        return 1;
+    }
+
+    ushort[] mem = new ushort[65536];
+    int i = 0;
+    while(code.length > 0) {
+        mem[i] = cast(ushort)((code[0] << 8) | code[1]);
+        code = code[2..$];
+        i++;
+    }
+
+    Simulator simulator = new Simulator(mem);
+
+    for(i = 0; i < 1000; i++) {
+        simulator.step();
+    }
+
+    io.writefln("R0 = %d", simulator.regs[0]);
 
     return 0;
+}
+
+int main(string[] args) {
+
+    if(args.length < 2) {
+        printHelp();
+        return 1;
+    }
+
+    Options options = Options();
+
+    try {
+        parseOptions(options, args[1..$-1]);
+    } catch(OptionException ex)  {
+        io.writefln("Option parsing failure: %s", ex.msg);
+        return 1;
+    }
+
+    if(options.execute)
+        return execute(options, args[$-1]);
+    else
+        return compile(options, args[$-1]);
 }
 
 string help = `
@@ -173,6 +210,7 @@ options:
 -l          Save lexer output to lexer.out
 -p          Save parser output to parser.out
 -c          Generate make_inst C code.
+-x FILE     Executes a file using the SM simulator.
 `;
 
 void printHelp() {

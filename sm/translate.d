@@ -51,17 +51,10 @@ class BinaryTranslator {
     }
 
     void write(ushort val) {
-        version(BigEndian) {
-            mem[memi] = cast(ubyte)(val >> 8);
-            memi++;
-            mem[memi] = cast(ubyte)(val     );
-            memi++;
-        } else {
-            mem[memi] = cast(ubyte)(val     );
-            memi++;
-            mem[memi] = cast(ubyte)(val >> 8);
-            memi++;
-        }
+        mem[memi] = cast(ubyte)(val >> 8);
+        memi++;
+        mem[memi] = cast(ubyte)(val     );
+        memi++;
         if(memi > memhigh)
             memhigh = memi;
     }
@@ -83,11 +76,7 @@ class BinaryTranslator {
             node.relative = 0;
             node.high = high;
             node.ident = ident;
-
-            version(BigEndian)
-                node.memi = memi+1;
-            else
-                node.memi = memi;
+            node.memi = memi+1;
 
             addResolveNode(node);
         }
@@ -106,7 +95,7 @@ class BinaryTranslator {
             write(cast(ushort)inst.data);
             break;
         case OpCode.Offset:
-            memi = inst.data;
+            memi = inst.data*2;
             break;
 
         case OpCode.Noop:

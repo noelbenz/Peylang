@@ -169,11 +169,32 @@ int execute(Options options, string filename) {
 
     Simulator simulator = new Simulator(mem);
 
-    for(i = 0; i < 1000; i++) {
-        simulator.step();
+    int execCount = 2000;
+    for(i = 0; i < execCount; i++) {
+        simulator.step(execCount <= 10000);
     }
 
-    io.writefln("R0 = %d", simulator.regs[0]);
+    io.writeln();
+    io.writeln("------------ Registers ------------");
+    for(i = 0; i < 16; i++) {
+        ushort reg = simulator.regs[i];
+        io.writefln("R%02d = %5d %6du | 0x%04X", i, cast(short)reg, cast(ushort)reg, reg);
+    }
+
+    io.writeln();
+    io.writeln("------------ Memory ------------");
+    bool newline = false;
+    for(i = 0; i < mem.length; i++) {
+        ushort val = mem[i];
+        if(val == 0) {
+            if(newline)
+                io.writeln();
+            newline = false;
+        } else {
+            newline = true;
+            io.writefln("%04X = %6d %5du | 0x%04X", i, cast(short)val, cast(ushort)val, val);
+        }
+    }
 
     return 0;
 }

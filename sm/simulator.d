@@ -7,12 +7,17 @@ import sm.spec;
 
 class Simulator {
     ushort[] mem;
-    ushort regs[16];
+    short regs[16];
     ushort _pc;
+    size_t readOnly;
+    size_t instCount = 0;
 
-    this(ushort[] mem, int entryAddr = 0x4000) {
+    int stackReg = 15;
+
+    this(ushort[] mem, int entryAddr = 0, int readOnly = 0x1000) {
         this.mem = mem;
         this.pc = cast(ushort)entryAddr;
+        this.readOnly = cast(ushort)readOnly;
     }
 
 
@@ -24,12 +29,22 @@ class Simulator {
     }
 
     void write(size_t addr, ushort val) {
+        if(cast(ushort)addr < readOnly)
+            throw new Exception(format("Attempt to write 0x%04X at read-only memory address 0x%04X. PC = 0x%04X", val, addr, pc));
+
         mem[addr] = val;
     }
 
-    void step() {
+    string opName(int op, int subop) {
+        if(op == 0)
+            return to!string(cast(SmSubOpCode)subop);
+        return to!string(cast(SmOpCode)op);
+    }
+
+    void step(bool print) {
         ushort op = read(pc);
         pc = pc + 1;
+        instCount++;
 
         int opcode = (op >> 12) & 0x000F;
         int c      = (op >>  8) & 0x000F;
@@ -38,7 +53,8 @@ class Simulator {
 
         int imm    = (op      ) & 0x00FF;
 
-        io.writefln("%4X: [%d] (%d) %d %d %d", pc-1, opcode, imm, c, b, a);
+        if(print)
+            io.writefln("%6d %4X: [%2d] (%3d) %2d %2d %2d | %s", instCount, pc-1, opcode, imm, c, b, a, opName(opcode, b));
 
         switch(opcode) {
         case SmOpCode.SubOp:
@@ -46,23 +62,23 @@ class Simulator {
                 case SmSubOpCode.Noop:
                     break;
                 case SmSubOpCode.LoadMemory:
-                    regs[c] = read(regs[a]);
+                    regs[c] = read(cast(ushort)regs[a]);
                     break;
                 case SmSubOpCode.StoreMemory:
-                    write(regs[c], regs[a]);
+                    write(cast(ushort)regs[c], regs[a]);
                     break;
                 case SmSubOpCode.Call:
                     regs[a]--;
-                    write(regs[a], pc);
-                    pc = regs[c];
+                    write(cast(ushort)regs[a], pc);
+                    pc = cast(ushort)regs[c];
                     break;
                 case SmSubOpCode.Return:
-                    pc = read(regs[a]);
+                    pc = read(cast(ushort)regs[a]);
                     regs[a]++;
                     break;
                 case SmSubOpCode.Jump:
                     if(regs[c])
-                        pc = regs[a];
+                        pc = cast(ushort)regs[a];
                     break;
                 case SmSubOpCode.Branch:
                     if(regs[c])
@@ -108,13 +124,12 @@ class Simulator {
                     regs[c] = rev;
                     break;
                 case SmSubOpCode.Pop:
-                    regs[a] = read(regs[c]);
-                    regs[c]++;
+                    regs[c] = read(cast(ushort)regs[a]);
+                    regs[a]++;
                     break;
                 case SmSubOpCode.Push:
-                    regs[c]--;
-                    write(regs[c], regs[a]);
-                    regs[a] = regs[c];
+                    regs[a]--;
+                    write(cast(ushort)regs[a], regs[c]);
                     break;
                 default:
                 assert(false);
@@ -142,10 +157,10 @@ class Simulator {
             regs[c] = cast(ushort)(regs[b] | regs[a]);
             break;
         case SmOpCode.ShiftLeft:
-            regs[c] = cast(ushort)(regs[b] << (regs[a] & 0xF));
+            regs[c] = cast(ushort)(regs[b] << (cast(ushort)regs[a] & 0xF));
             break;
         case SmOpCode.ShiftRight:
-            regs[c] = cast(ushort)(regs[b] >> (regs[a] & 0xF));
+            regs[c] = cast(ushort)(regs[b] >> (cast(ushort)regs[a] & 0xF));
             break;
         case SmOpCode.LessThan:
             regs[c] = cast(ushort)(regs[b] < regs[a]);
@@ -170,5 +185,8 @@ class Simulator {
         default:
             assert(false);
         }
+        if(pc > 2 && cast(ushort)regs[stackReg] < 0x1000)
+            throw new Exception(format("Stack register is below threshold 0x1000: rsp = 0x%04X", regs[stackReg]));
     }
+
 }

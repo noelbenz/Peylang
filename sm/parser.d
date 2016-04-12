@@ -242,7 +242,7 @@ class Parser {
                     inst.op = token.op;
                     next();
                     // stack pointer
-                    inst.args[0] = Argument(getRegister(regStack));
+                    inst.args[1] = Argument(getRegister(regStack));
                     return true;
                 case OpCode.ShortCall:
                     inst.token = token;

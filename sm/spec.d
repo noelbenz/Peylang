@@ -97,6 +97,8 @@ enum OpCode {
     Return,
     Jump,
     Branch,
+    Reserved1,
+    Reserved2,
     BitNot,
     Negate,
     LogicNot,
